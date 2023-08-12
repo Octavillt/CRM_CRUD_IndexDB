@@ -43,7 +43,7 @@
 
     // Función para obtener un cliente por su ID
     function obtenerCliente(id) {
-        const transaction = DB.transaction(['crm'], 'readwrite');
+        const transaction = DB.transaction(['crm'], 'readonly');
         const objectStore = transaction.objectStore('crm');
         var request = objectStore.openCursor(); // Abrir un cursor para recorrer los registros
 
@@ -51,7 +51,7 @@
             var cursor = event.target.result;
             if (cursor) {
                 // Si el ID del cliente coincide, llama a la función para llenar el formulario
-                if (cursor.value.id == id) {
+                if (cursor.value.id === Number(id)) {
                     llenarFormulario(cursor.value);
                 }
                 cursor.continue(); // Continúa al siguiente registro
