@@ -1,82 +1,106 @@
-// Esta función anónima se invoca inmediatamente después de su definición.
+// Este bloque es una función autoinvocada (IIFE, por sus siglas en inglés: Immediately Invoked Function Expression). 
+// Es una técnica en JavaScript que permite ejecutar funciones tan pronto como se definen.
 (function () {
-    // Declaración de variable para almacenar la referencia a la base de datos
+
+    // Esta variable almacenará una referencia activa a nuestra base de datos cuando esté abierta.
     let DB;
 
-    // Escucha el evento 'DOMContentLoaded' que se dispara cuando el documento HTML ha sido completamente cargado
+    // Seleccionamos el contenedor donde se mostrará la lista de clientes.
+    const listadoClientes = document.querySelector('#listado-clientes');
+
+    // Se añade un evento que escucha cuando todo el contenido del documento ha sido cargado.
     document.addEventListener('DOMContentLoaded', () => {
-        // Llama a la función para crear la base de datos
+        // Intenta crear la base de datos cuando el documento esté listo.
         crearDB();
 
-        // Si se puede abrir la base de datos, llama a la función para obtener los clientes
+        // Verifica si la base de datos 'crm' puede ser abierta con la versión 1, luego obtiene los clientes.
         if (window.indexedDB.open('crm', 1)) {
             obtenerClientes();
         }
+
+        // Escucha por un click en la lista de clientes para eliminar un cliente si se hace click en el enlace "Eliminar".
+        listadoClientes.addEventListener('click', eliminarRegistro);
     });
 
-    // Función para crear la base de datos IndexedDB
+    // Esta función se encarga de eliminar registros de la base de datos.
+    function eliminarRegistro(e) {
+        // Se verifica si el elemento al que se le hizo click tiene la clase 'eliminar'.
+        if (e.target.classList.contains('eliminar')) {
+            // Convierte el ID del cliente de string a número.
+            const idEliminar = Number(e.target.dataset.cliente);
+            
+            // Pregunta al usuario si realmente desea eliminar el cliente.
+            const confirmar = confirm('¿Deseas eliminar este cliente?');
+            
+            if (confirmar) {
+                // Comienza una transacción para eliminar el cliente.
+                const transaction = DB.transaction(['crm'], 'readwrite');
+                const objectStore = transaction.objectStore('crm');
+                objectStore.delete(idEliminar);
+                
+                // Si la eliminación fue exitosa, se informa y se elimina el cliente de la vista.
+                transaction.oncomplete = function () {
+                    console.log('Eliminado correctamente');
+                    e.target.parentElement.parentElement.remove();
+                }
+                
+                // Si hay un error, se registra en la consola.
+                transaction.onerror = function () {
+                    console.log('Hubo un error');
+                }
+            }
+        }
+    }
+
+    // Esta función se encarga de crear la base de datos 'crm' si aún no existe.
     function crearDB() {
-        // Intenta abrir la base de datos 'crm' con la versión 1
         const crearDB = window.indexedDB.open('crm', 1);
 
-        // Si hay un error al abrir la base de datos, lo registra en la consola
         crearDB.onerror = function () {
             console.log('Hubo un error');
         };
 
-        // Si la base de datos se abre correctamente, guarda la referencia en la variable DB
         crearDB.onsuccess = function () {
             DB = crearDB.result;
         };
 
-        // Este método se ejecuta solo una vez, cuando se necesita actualizar la estructura de la base de datos
+        // Esta parte del código solo se ejecutará si es necesario crear la base de datos o actualizar su estructura.
         crearDB.onupgradeneeded = function (e) {
-            // Obtiene una referencia a la base de datos
             const db = e.target.result;
-
-            // Crea un "object store" llamado 'crm', con una clave primaria que se autoincrementa
+            
+            // Crea un almacén de objetos con diferentes índices para facilitar las búsquedas.
             const objectStore = db.createObjectStore('crm', { keyPath: 'id', autoIncrement: true });
-
-            // Define varios índices para buscar en la base de datos
+            
             objectStore.createIndex('nombre', 'nombre', { unique: false });
             objectStore.createIndex('email', 'email', { unique: true });
             objectStore.createIndex('telefono', 'telefono', { unique: false });
             objectStore.createIndex('empresa', 'empresa', { unique: false });
             objectStore.createIndex('id', 'id', { unique: true });
+
             console.log('Database creada y lista');
         };
     }
 
-    // Función para obtener los clientes de la base de datos
+    // Esta función obtiene todos los clientes de la base de datos y los muestra en el DOM.
     function obtenerClientes() {
-        // Intenta abrir la base de datos 'crm' con la versión 1
         let abrirConexion = window.indexedDB.open('crm', 1);
 
-        // Si hay un error, lo registra en la consola
         abrirConexion.onerror = function () {
             console.log('Hubo un error');
         };
 
-        // Si la base de datos se abre correctamente, procede a obtener los clientes
         abrirConexion.onsuccess = function () {
             DB = abrirConexion.result;
-
-            // Obtiene un objeto transacción para trabajar con la base de datos
             const objectStore = DB.transaction('crm').objectStore('crm');
-
-            // Abre un cursor para iterar a través de los registros en la base de datos
+            
+            // Itera sobre cada cliente en la base de datos y lo añade al DOM.
             objectStore.openCursor().onsuccess = function (e) {
                 const cursor = e.target.result;
 
-                // Si el cursor no es nulo, significa que hay más registros para procesar
                 if (cursor) {
-                    // Desestructura los valores del registro actual
                     const { nombre, empresa, email, telefono, id } = cursor.value;
-
-                    // Obtiene una referencia al elemento donde se mostrarán los clientes
-                    const listadoClientes = document.querySelector('#listado-clientes');
-
-                    // Agrega la información del cliente actual al HTML
+                    
+                    // Este template literal agrega un nuevo registro al DOM por cada cliente.
                     listadoClientes.innerHTML += `
                     <tr>
                     <td class="px-6 py-4 whitespace-no-wrap border-b border-gray-200">
@@ -91,15 +115,12 @@
                     </td>
                     <td class="px-6 py-4 whitespace-no-wrap border-b border-gray-200 text-sm leading-5">
                         <a href="editar-cliente.html?id=${id}" class="text-teal-600 hover:text-teal-900 mr-5">Editar</a>
-                        <a href="#" data-cliente="${id}" class="text-red-600 hover:text-red-900">Eliminar</a>
+                        <a href="#" data-cliente="${id}" class="text-red-600 hover:text-red-900 eliminar">Eliminar</a>
                     </td>
                 </tr>
                     `;
 
-                    // Continúa al siguiente registro en la base de datos
                     cursor.continue();
-                } else {
-                    // Si el cursor es nulo, hemos llegado al final de los registros
                 }
             };
         };

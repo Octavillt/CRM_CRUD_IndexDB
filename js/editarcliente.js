@@ -24,7 +24,7 @@
         idCliente = parametrosURL.get('id');
         if (idCliente) {
             // Si el ID existe, obtiene los datos del cliente después de un retraso de 100ms
-            setTimeout(() => {
+            setTimeout(() => { // Damos Oportunida de tiempo de que se valide que la BD exista
                 obtenerCliente(idCliente);
             }, 100);
         }
@@ -51,7 +51,7 @@
             var cursor = event.target.result;
             if (cursor) {
                 // Si el ID del cliente coincide, llama a la función para llenar el formulario
-                if (cursor.value.id === Number(id)) {
+                if (cursor.value.id === Number(id)) { // Equivalencia a un WHERE de SQL
                     llenarFormulario(cursor.value);
                 }
                 cursor.continue(); // Continúa al siguiente registro
@@ -103,8 +103,8 @@
 
         // Manejar cualquier error durante la transacción
         transaction.onerror = (error) => {
-            console.log(error);
-            console.log('Hubo un errorr.');
+            console.error(error);
+            imprimirAlerta('Hubo un Error', 'error');
         };
     }
 
